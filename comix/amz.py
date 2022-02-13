@@ -164,6 +164,14 @@ class AmazonAuth:
         email_hash = b64encode(self._email.encode()).decode()
         self._token_path = USER_PATH / f"token_{email_hash}.{self._domain}.json"
 
+        self._ip_address_frc: str = None
+
+    @property
+    def ip_address(self):
+        if self._ip_address_frc is None:
+            self._ip_address_frc = requests.get("https://api.ipify.org").text
+        return self._ip_address_frc
+
     def _pkcs7_pad(self, data: Union[str, bytes]) -> bytes:
         padsize = 16 - len(data) % 16
         return data + bytes([padsize]) * padsize
@@ -188,7 +196,7 @@ class AmazonAuth:
                 "DeviceLanguage": "en",
                 "DeviceName": DEVICE_NAME,
                 "DeviceOSVersion": OS_VERSION,
-                "IpAddress": requests.get("https://api.ipify.org").text,
+                "IpAddress": self.ip_address,
                 "ScreenHeightPixels": "1920",
                 "ScreenWidthPixels": "1280",
                 "TimeZone": "00:00",
@@ -208,6 +216,8 @@ class AmazonAuth:
 
     @property
     def hash_pass(self):
+        if not self._password:
+            return "[???]"
         first = self._password[0]
         last = self._password[-1]
         length = len(self._password) - 2
