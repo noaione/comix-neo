@@ -1,0 +1,37 @@
+[tool.poetry]
+name = "comix"
+version = "0.1.0"
+description = "A Comixology ripper to backup your manga and comics to your local devices in high quality"
+authors = ["noaione <noaione0809@gmail.com>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.7"
+requests = "^2.27.1"
+protobuf = "^3.19.4"
+pycryptodome = "^3.14.1"
+pyzipper = "^0.3.5"
+click = "^8.0.3"
+
+[tool.poetry.dev-dependencies]
+flake8 = "^4.0.1"
+black = "^22.1.0"
+isort = "^5.10.1"
+
+[tool.poetry.scripts]
+cmx = "comix.cli:main"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 120
+target-version = ["py37", "py38", "py39"]
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+extend_skip = ["env/**", "venv/**", ".pytest_cache/**", ".venv/**", "__pycache__/**"]
+line_length = 120
+skip_gitignore = true

@@ -1,0 +1,8 @@
+comix_out
+comix_dl
+__pycache__
+*.log
+.venv
+venv
+env
+dist
