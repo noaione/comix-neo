@@ -18,7 +18,7 @@ class ProgressBar:
 
     def make(self) -> Generator[int, None, None]:
         if with_tqdm:
-            for page in tqdm.tqdm(list(range(0, self._maximum)), desc="Downloading", unit="page"):
+            for page in tqdm.tqdm(list(range(0, self._maximum)), desc="Downloading", unit="page", ascii=True):
                 yield page
         else:
             for page in list(range(0, self._maximum)):
