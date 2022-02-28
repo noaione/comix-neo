@@ -18,7 +18,7 @@ from .logme import setup_logger
 from .progressbar import ProgressBar
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"], ignore_unknown_options=True)
-CURRENT_DIR = Path(__file__).absolute().parent
+CURRENT_DIR = Path.cwd().absolute().parent
 logger = setup_logger(CURRENT_DIR)
 
 
