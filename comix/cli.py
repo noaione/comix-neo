@@ -131,10 +131,12 @@ def comix_neo_download(
         with AESZipFile(BytesIO(response.content)) as zf:
             zf.extractall(comix_out, pwd=image_key)
 
-    for idx, file in enumerate(comix_out.rglob("*")):
+    numbering = 0
+    for file in comix_out.rglob("*"):
         extension = os.path.splitext(file)[1]
         if extension in VALID_IMAGES:
-            os.rename(file, comix_out / f"{comic.release_name} - p{idx:03d}{extension}")
+            os.rename(file, comix_out / f"{comic.release_name} - p{numbering:03d}{extension}")
+            numbering += 1
 
     if cbz:
         logger.info(f"Merging {comic.title}")
@@ -252,10 +254,12 @@ def comix_neo_dlall(username: Optional[str], password: Optional[str], domain: st
             with AESZipFile(BytesIO(response.content)) as zf:
                 zf.extractall(comix_out, pwd=image_key)
 
-        for idx, file in enumerate(comix_out.rglob("*")):
+        numbering = 0
+        for file in comix_out.rglob("*"):
             extension = os.path.splitext(file)[1]
             if extension in VALID_IMAGES:
-                os.rename(file, comix_out / f"{comic.release_name} - p{idx:03d}{extension}")
+                os.rename(file, comix_out / f"{comic.release_name} - p{numbering:03d}{extension}")
+                numbering += 1
 
         if cbz:
             logger.info(f"Merging {comic.title}")
