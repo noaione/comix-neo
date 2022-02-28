@@ -14,7 +14,7 @@ from comix.amz import AmazonAuth
 from comix.constants import API_DOWNLOAD_URL, API_HEADERS, API_ISSUE_URL, API_LIST_URL
 
 logger = logging.getLogger("ComixClient")
-CURRENT_DIR = Path(__file__).absolute().parent
+CURRENT_DIR = Path.cwd().absolute()
 DOWNLOAD_DIR = CURRENT_DIR / "comix_dl"
 DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
