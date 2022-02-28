@@ -18,7 +18,7 @@ from .logme import setup_logger
 from .progressbar import ProgressBar
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"], ignore_unknown_options=True)
-CURRENT_DIR = Path.cwd().absolute().parent
+CURRENT_DIR = Path.cwd().absolute()
 logger = setup_logger(CURRENT_DIR)
 
 
@@ -122,6 +122,7 @@ def comix_neo_download(
     VALID_IMAGES = [".jpg", ".jpeg", "jpg", "jpeg", ".png", "png"]
 
     logger.info(f"Downloading: {comic.release_name}")
+    logger.info(f"Download path: {comix_out}")
     for (idx, image), _ in zip(enumerate(comic.images), ProgressBar(len(comic.images)).make()):
         image_key = ComixKey.calculate_key(
             image.digest, int(comic_id), comic.version, comic.publisher_id, idx
@@ -242,6 +243,7 @@ def comix_neo_dlall(username: Optional[str], password: Optional[str], domain: st
         comix_out.mkdir(parents=True, exist_ok=True)
 
         logger.info(f"Downloading: {comic.release_name}")
+        logger.info(f"Download path: {comix_out}")
         for (idx, image), _ in zip(enumerate(comic.images), ProgressBar(len(comic.images)).make()):
             image_key = ComixKey.calculate_key(
                 image.digest, int(comic_raw.id), comic.version, comic.publisher_id, idx
