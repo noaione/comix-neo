@@ -11,7 +11,7 @@ from google.protobuf.message import DecodeError
 
 import comix.comix_pb2 as comix_pb2
 from comix.amz import AmazonAuth
-from comix.constants import API_DOWNLOAD_URL, API_HEADERS, API_ISSUE_URL, API_LIST_URL, DEVICE_ID
+from comix.constants import API_DOWNLOAD_URL, API_HEADERS, API_ISSUE_URL, API_LIST_URL
 
 logger = logging.getLogger("ComixClient")
 CURRENT_DIR = Path(__file__).absolute().parent
@@ -83,7 +83,7 @@ class CmxClient:
         self._session = requests.session()
         self._session.headers.update(API_HEADERS)
 
-        self.amz = AmazonAuth(email, password, DEVICE_ID, domain)
+        self.amz = AmazonAuth(email, password, domain)
         self.amz.login()
 
     @property
