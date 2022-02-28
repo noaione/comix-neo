@@ -12,7 +12,7 @@ from pyzipper import AESZipFile
 
 from .amz import AmazonAuth, AuthFailed
 from .client import CmxClient
-from .constants import DEVICE_ID, USER_PATH, __version__
+from .constants import USER_PATH, __version__
 from .key import ComixKey
 from .logme import setup_logger
 from .progressbar import ProgressBar
@@ -22,7 +22,7 @@ CURRENT_DIR = Path(__file__).absolute().parent
 logger = setup_logger(CURRENT_DIR)
 
 
-def _get_user_or_fallback(username: Optional[str]) -> str:
+def _get_user_or_fallback(username: Optional[str], password: Optional[str]) -> str:
     active_account: str = None
     if not username:
         for account in USER_PATH.glob("*.json"):
@@ -31,7 +31,7 @@ def _get_user_or_fallback(username: Optional[str]) -> str:
                     account_test = json.load(f)
                     acc_email = account_test["email"]
                     acc_domain = account_test["domain"]
-                    amz_test = AmazonAuth(acc_email, None, DEVICE_ID, acc_domain)
+                    amz_test = AmazonAuth(acc_email, password, acc_domain)
                     try:
                         amz_test.login()
                         active_account = acc_email
@@ -106,7 +106,7 @@ def comix_neo_download(
     if not comic_id.isdigit():
         logger.error("Invalid comic id")
         exit(1)
-    active_account: str = _get_user_or_fallback(username)
+    active_account: str = _get_user_or_fallback(username, password)
 
     neo_session = CmxClient(active_account, password, domain)
     comic = neo_session.get_comic(int(comic_id))
@@ -171,7 +171,7 @@ def comix_neo_download(
     help="The domain tld of your account, default is com.",
 )
 def comix_neo_list(username: Optional[str], password: Optional[str], domain: str):
-    active_account: str = _get_user_or_fallback(username)
+    active_account: str = _get_user_or_fallback(username, password)
     if active_account is None:
         logger.error("No active account found, please login first")
         exit(1)
@@ -214,7 +214,7 @@ def comix_neo_list(username: Optional[str], password: Optional[str], domain: str
 )
 @click.option("--cbz", is_flag=True, help="Merge as CBZ after finish downloading")
 def comix_neo_dlall(username: Optional[str], password: Optional[str], domain: str, cbz: bool):
-    active_account: str = _get_user_or_fallback(username)
+    active_account: str = _get_user_or_fallback(username, password)
     if active_account is None:
         logger.error("No active account found, please login first")
         exit(1)
