@@ -33,6 +33,7 @@ def _get_user_or_fallback(username: Optional[str], password: Optional[str]) -> s
                     account_test = json.load(f)
                     acc_email = account_test["email"]
                     acc_domain = account_test["domain"]
+                    password = password or account_test.get("password")
                     amz_test = AmazonAuth(acc_email, password, acc_domain)
                     try:
                         amz_test.login()
