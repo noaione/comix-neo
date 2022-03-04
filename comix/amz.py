@@ -8,10 +8,9 @@ import json
 import logging
 import time
 from base64 import b64decode, b64encode
-from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 from secrets import token_bytes, token_hex
-from typing import Any, Optional, Type, Union
+from typing import Any, Optional, Union
 from urllib.parse import urlparse
 from uuid import uuid4
 
@@ -24,6 +23,7 @@ from Crypto.PublicKey import RSA
 from Crypto.Signature import pkcs1_15
 
 from .constants import USER_PATH
+from .models import AmazonAccount
 
 logger = logging.getLogger("AmazonAuth")
 
@@ -39,140 +39,6 @@ SW_VERSION = "1221328936"
 
 class AuthFailed(Exception):
     pass
-
-
-@dataclass
-class AmazonDevice:
-    name: str
-    serial: str
-    type: str
-
-    @classmethod
-    def from_data(cls: Type[AmazonDevice], data: dict):
-        return cls(data["device_name"], data["device_serial_number"], data["device_type"])
-
-    @classmethod
-    def from_dict(cls: Type[AmazonDevice], data: dict):
-        return cls(data["name"], data["serial"], data["type"])
-
-    def to_dict(self):
-        return {
-            "name": self.name,
-            "serial": self.serial,
-            "type": self.type,
-        }
-
-
-@dataclass
-class AmazonAccount:
-    id: str
-    name: str
-    email: str
-    region: str
-    pool: Optional[str]
-    domain: str
-    device: AmazonDevice
-    access_token: str
-    refresh_token: str
-    private_key: str
-    adp_token: str
-    expire_at: int
-
-    def is_expired(self):
-        return self.expire_at < int(datetime.now(timezone.utc).timestamp())
-
-    def update_expiry(self, expires_in: int):
-        self.expire_at = int(datetime.now(timezone.utc).timestamp()) + expires_in
-
-    @classmethod
-    def from_data(cls: Type[AmazonAccount], data: dict, email: str, domain: str):
-        success_response = data.get("response", {}).get("success", {})
-        if not success_response:
-            raise ValueError("Invalid response")
-
-        extensions = success_response.get("extensions", {})
-        if not extensions:
-            raise ValueError("Missing extensions data, needed for account info")
-
-        device_info = extensions.get("device_info", {})
-        if not device_info:
-            raise ValueError("Missing device info")
-        cust_info = extensions.get("customer_info", {})
-        if not cust_info:
-            raise ValueError("Missing customer info")
-        tokens = success_response.get("tokens", {})
-        if not tokens:
-            raise ValueError("Missing tokens")
-        bearer_token = tokens.get("bearer", {})
-        if not bearer_token:
-            raise ValueError("Missing bearer token")
-        mac_dms = tokens.get("mac_dms", {})
-        if not mac_dms:
-            raise ValueError("Missing MAC DMS token")
-
-        cust_id = cust_info["user_id"]
-        cust_name = cust_info["name"]
-        cust_region = cust_info["home_region"]
-        cust_pool = cust_info.get("account_pool")
-
-        tkn_access = bearer_token["access_token"]
-        tkn_refresh = bearer_token["refresh_token"]
-
-        device_priv_key = mac_dms["device_private_key"]
-        adp_token = mac_dms["adp_token"]
-
-        current_time = datetime.now(tz=timezone.utc).timestamp()
-        expire_at = current_time + int(bearer_token["expires_in"])
-
-        device_info_parsed = AmazonDevice.from_data(device_info)
-
-        return cls(
-            cust_id,
-            cust_name,
-            email,
-            cust_region,
-            cust_pool,
-            domain,
-            device_info_parsed,
-            tkn_access,
-            tkn_refresh,
-            device_priv_key,
-            adp_token,
-            expire_at,
-        )
-
-    @classmethod
-    def from_dict(cls: Type[AmazonAccount], data: dict):
-        return cls(
-            data["id"],
-            data["name"],
-            data["email"],
-            data["region"],
-            data["pool"],
-            data["domain"],
-            AmazonDevice.from_dict(data["device"]),
-            data["access_token"],
-            data["refresh_token"],
-            data["private_key"],
-            data["adp_token"],
-            data["expire_at"],
-        )
-
-    def to_dict(self):
-        return {
-            "id": self.id,
-            "name": self.name,
-            "email": self.email,
-            "region": self.region,
-            "pool": self.pool,
-            "domain": self.domain,
-            "device": self.device.to_dict(),
-            "access_token": self.access_token,
-            "refresh_token": self.refresh_token,
-            "private_key": self.private_key,
-            "adp_token": self.adp_token,
-            "expire_at": self.expire_at,
-        }
 
 
 class AmazonAuth:

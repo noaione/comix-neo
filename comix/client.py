@@ -1,81 +1,22 @@
 from __future__ import annotations
 
 import logging
-import re
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, List, Optional, Type
+from typing import List, Optional
 
 import requests
 from google.protobuf.message import DecodeError
 
 import comix.comix_pb2 as comix_pb2
-from comix.amz import AmazonAuth
-from comix.constants import API_DOWNLOAD_URL, API_HEADERS, API_ISSUE_URL, API_LIST_URL
+
+from .amz import AmazonAuth
+from .constants import API_DOWNLOAD_URL, API_HEADERS, API_ISSUE_URL, API_LIST_URL
+from .models import ComicData, ComicImage, ComicIssue
 
 logger = logging.getLogger("ComixClient")
 CURRENT_DIR = Path.cwd().absolute()
 DOWNLOAD_DIR = CURRENT_DIR / "comix_dl"
 DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
-
-
-@dataclass
-class ComicImage:
-    url: str
-    digest: bytes
-
-
-@dataclass
-class ComicIssue:
-    id: str
-    title: str
-    series_id: Optional[str]
-    volume: Optional[int]
-    issue: Optional[int]
-
-    @classmethod
-    def from_proto(cls: Type[ComicIssue], issue: Any):
-        volume = None
-        chapter = None
-        series_id = None
-
-        if issue.volume != "":
-            volume = int(issue.volume)
-        if issue.issue != "":
-            chapter = int(issue.issue)
-        if issue.series_id != "":
-            series_id = issue.series_id
-
-        return cls(issue.id, issue.title, series_id, volume, chapter)
-
-    @property
-    def release_name(self):
-        regex = r"\.|\?|\\|/|<|>|\"|'|%|\*|\&|\+|\-|\#|\!"
-        release_name = re.sub(r"\s+", " ", re.sub(regex, "", self.title).replace(":", "-"))
-        if self.volume:
-            release_name += f" - v{self.volume:02d}"
-        elif self.issue:
-            release_name += f" - {self.issue:03d}"
-        return release_name
-
-
-@dataclass
-class ComicData:
-    id: str
-    title: str
-    publisher_id: str
-    version: str
-    issue: Optional[ComicIssue]
-    images: List[ComicImage]
-
-    @property
-    def release_name(self):
-        if self.issue is not None:
-            return self.issue.release_name
-
-        regex = r"\.|\?|\\|/|<|>|\"|'|%|\*|\&|\+|\-|\#|\!"
-        release_name = re.sub(r"\s+", " ", re.sub(regex, "", self.title).replace(":", "-"))
-        return f"{release_name} ({self.id})"
 
 
 class CmxClient:
