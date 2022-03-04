@@ -1,23 +1,25 @@
 from __future__ import annotations
 
 import json
-import os
-from io import BytesIO
 from pathlib import Path
-from typing import Optional
-from zipfile import ZipFile
+from typing import TYPE_CHECKING, Optional
 
 import click
-from pyzipper import AESZipFile
 
 from .amz import AmazonAuth, AuthFailed
 from .client import CmxClient
 from .constants import USER_PATH, __version__
+from .exporter import CBZMangaExporter, MangaExporter
 from .key import ComixKey
 from .logme import setup_logger
 from .progressbar import ProgressBar
 
-CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"], ignore_unknown_options=True)
+if TYPE_CHECKING:
+    from requests import Session
+
+    from .models import ComicData
+
+CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 CURRENT_DIR = Path.cwd().absolute()
 logger = setup_logger(CURRENT_DIR)
 
@@ -62,15 +64,37 @@ def existing_dl(path: Path):
     return cbz_file.exists()
 
 
-@click.group(context_settings=CONTEXT_SETTINGS, invoke_without_command=True)
-@click.option("--version", "-V", is_flag=True, help="Show current version")
-def main(version=False):
+def cmx_download_helper(comic: ComicData, output_dir: Path, session: Session, as_cbz: bool = False) -> None:
+    if as_cbz:  # Export as .cbz
+        cmx_export = CBZMangaExporter(comic, output_dir)
+    else:
+        cmx_export = MangaExporter(comic, output_dir)
+
+    if cmx_export.is_existing():
+        logger.info(f"{comic.release_name} already downloaded!")
+        cmx_export.close()
+        return
+
+    logger.info(f"Downloading: {comic.release_name}")
+    logger.info(f"Download path: {output_dir}")
+
+    for (idx, image), _ in zip(enumerate(comic.images), ProgressBar(len(comic.images)).make()):
+        image_key = ComixKey.calculate_key(image.digest, comic.int_id, comic.version, comic.publisher_id, idx)
+        response = session.get(image.url)
+        cmx_export.add_image(response.content, image_key)
+
+    logger.info(f"Downloaded {comic.release_name}, cleaning up!")
+    cmx_export.close()
+
+
+@click.group(context_settings=CONTEXT_SETTINGS)
+@click.version_option(__version__, "--version", "-V")
+@click.pass_context
+def main(ctx: click.Context):
     """
     A backup tools for your Comixology library.
     """
-    if version:
-        print("comix-neo v{} - Created by noaione".format(__version__))
-        exit(0)
+    pass
 
 
 @main.command("dl", short_help="Download comic by ID")
@@ -115,39 +139,7 @@ def comix_neo_download(
         exit(1)
 
     comix_out = CURRENT_DIR / "comix_dl" / comic.release_name
-    if existing_dl(comix_out):
-        logger.info(f"{comic.release_name} already downloaded, skipping!")
-        exit(0)
-    comix_out.mkdir(parents=True, exist_ok=True)
-    VALID_IMAGES = [".jpg", ".jpeg", "jpg", "jpeg", ".png", "png"]
-
-    logger.info(f"Downloading: {comic.release_name}")
-    logger.info(f"Download path: {comix_out}")
-    for (idx, image), _ in zip(enumerate(comic.images), ProgressBar(len(comic.images)).make()):
-        image_key = ComixKey.calculate_key(
-            image.digest, int(comic_id), comic.version, comic.publisher_id, idx
-        )
-        response = neo_session.session.get(image.url)
-        with AESZipFile(BytesIO(response.content)) as zf:
-            zf.extractall(comix_out, pwd=image_key)
-
-    numbering = 0
-    for file in comix_out.rglob("*"):
-        extension = os.path.splitext(file)[1]
-        if extension in VALID_IMAGES:
-            os.rename(file, comix_out / f"{comic.release_name} - p{numbering:03d}{extension}")
-            numbering += 1
-
-    if cbz:
-        logger.info(f"Merging {comic.title}")
-        with ZipFile(comix_out.parent / f"{comic.release_name}.cbz", "w") as zipf:
-            for filepath in comix_out.rglob("*"):
-                extension = os.path.splitext(file)[1]
-                if extension in VALID_IMAGES:
-                    zipf.write(filepath, filepath.name)
-
-        empty_folders(comix_out)
-
+    cmx_download_helper(comic, comix_out, neo_session.session, cbz)
     neo_session.close()
 
 
@@ -174,6 +166,9 @@ def comix_neo_download(
     help="The domain tld of your account, default is com.",
 )
 def comix_neo_list(username: Optional[str], password: Optional[str], domain: str):
+    """
+    List all available comics on your account.
+    """
     active_account: str = _get_user_or_fallback(username, password)
     if active_account is None:
         logger.error("No active account found, please login first")
@@ -217,6 +212,9 @@ def comix_neo_list(username: Optional[str], password: Optional[str], domain: str
 )
 @click.option("--cbz", is_flag=True, help="Merge as CBZ after finish downloading")
 def comix_neo_dlall(username: Optional[str], password: Optional[str], domain: str, cbz: bool):
+    """
+    Download all comics available on your account.
+    """
     active_account: str = _get_user_or_fallback(username, password)
     if active_account is None:
         logger.error("No active account found, please login first")
@@ -227,7 +225,6 @@ def comix_neo_dlall(username: Optional[str], password: Optional[str], domain: st
     if not comics_list:
         logger.warning("No comics found in your account")
         exit(0)
-    VALID_IMAGES = [".jpg", ".jpeg", "jpg", "jpeg", ".png", "png"]
 
     logger.info("Found {} comics in your account".format(len(comics_list)))
     comics_list.sort(key=lambda x: x.release_name)
@@ -239,37 +236,7 @@ def comix_neo_dlall(username: Optional[str], password: Optional[str], domain: st
             continue
 
         comix_out = CURRENT_DIR / "comix_dl" / comic.release_name
-        if existing_dl(comix_out):
-            logger.info(f"{comic.release_name} already downloaded, skipping!")
-            continue
-        comix_out.mkdir(parents=True, exist_ok=True)
-
-        logger.info(f"Downloading: {comic.release_name}")
-        logger.info(f"Download path: {comix_out}")
-        for (idx, image), _ in zip(enumerate(comic.images), ProgressBar(len(comic.images)).make()):
-            image_key = ComixKey.calculate_key(
-                image.digest, int(comic_raw.id), comic.version, comic.publisher_id, idx
-            )
-            response = neo_session.session.get(image.url)
-            with AESZipFile(BytesIO(response.content)) as zf:
-                zf.extractall(comix_out, pwd=image_key)
-
-        numbering = 0
-        for file in comix_out.rglob("*"):
-            extension = os.path.splitext(file)[1]
-            if extension in VALID_IMAGES:
-                os.rename(file, comix_out / f"{comic.release_name} - p{numbering:03d}{extension}")
-                numbering += 1
-
-        if cbz:
-            logger.info(f"Merging {comic.title}")
-            with ZipFile(comix_out.parent / f"{comic.release_name}.cbz", "w") as zipf:
-                for filepath in comix_out.rglob("*"):
-                    extension = os.path.splitext(file)[1]
-                    if extension in VALID_IMAGES:
-                        zipf.write(filepath, filepath.name)
-
-            empty_folders(comix_out)
+        cmx_download_helper(comic, comix_out, neo_session.session, cbz)
     logger.info("Finished downloading all comics")
     neo_session.close()
 
