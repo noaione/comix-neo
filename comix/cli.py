@@ -89,7 +89,13 @@ def cmx_download_helper(comic: ComicData, output_dir: Path, session: Session, as
 
 
 @click.group(context_settings=CONTEXT_SETTINGS)
-@click.version_option(__version__, "--version", "-V")
+@click.version_option(
+    __version__,
+    "--version",
+    "-V",
+    prog_name="comix-neo",
+    message="%(prog)s v%(version)s - Created by noaione",
+)
 @click.pass_context
 def main(ctx: click.Context):
     """
@@ -150,14 +156,14 @@ def comix_neo_download(
     "-U",
     required=False,
     default=None,
-    help="Use username/password to download, you can ignore this if you already authenticated before.",
+    help="Use username/password to list, you can ignore this if you already authenticated before.",
 )
 @click.option(
     "--password",
     "-P",
     required=False,
     default=None,
-    help="Use username/password to download, you can ignore this if you already authenticated before.",
+    help="Use username/password to list, you can ignore this if you already authenticated before.",
 )
 @click.option(
     "--domain",
@@ -240,6 +246,48 @@ def comix_neo_dlall(username: Optional[str], password: Optional[str], domain: st
         cmx_download_helper(comic, comix_out, neo_session.session, cbz)
     logger.info("Finished downloading all comics")
     neo_session.close()
+
+
+@main.command("info", short_help="View information of specific comic")
+@click.argument("comic_id", metavar="<comic id>")
+@click.option(
+    "--username",
+    "-U",
+    required=False,
+    default=None,
+    help="Use username/password to view information, you can ignore this if you already authenticated before.",
+)
+@click.option(
+    "--password",
+    "-P",
+    required=False,
+    default=None,
+    help="Use username/password to view information, you can ignore this if you already authenticated before.",
+)
+@click.option(
+    "--domain",
+    "-d",
+    required=False,
+    default="com",
+    help="The domain tld of your account, default is com.",
+)
+def comix_neo_info(comic_id: str, username: Optional[str], password: Optional[str], domain: str):
+    """
+    View information of specific comic
+    """
+    if not comic_id.isdigit():
+        logger.error("Invalid comic id")
+        exit(1)
+    active_account: str = _get_user_or_fallback(username, password)
+    if active_account is None:
+        logger.error("No active account found, please login first")
+        exit(1)
+
+    neo_session = CmxClient(active_account, password, domain)
+    comic_info = neo_session.get_comic(int(comic_id))
+    if not comic_info:
+        logger.warning(f"Unable to find comic #{comic_id} from your account!")
+        exit(1)
 
 
 if __name__ == "__main__":
