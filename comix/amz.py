@@ -187,7 +187,7 @@ class AmazonAuth:
             f"https://api.amazon.{self._domain}/auth/register", headers=self._get_auth_headers(), json=body
         ).json()
         try:
-            amz_account = AmazonAccount.from_data(response_json, self._email, self._domain)
+            amz_account = AmazonAccount.from_data(response_json, self._email, self._password, self._domain)
             logger.info(f"Authenticated to {amz_account.name} (Device: {amz_account.device.name})")
             self._account = amz_account
             self.register_device()

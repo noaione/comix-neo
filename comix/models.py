@@ -106,6 +106,7 @@ class AmazonAccount:
     id: str
     name: str
     email: str
+    password: str
     region: str
     pool: Optional[str]
     domain: str
@@ -123,7 +124,7 @@ class AmazonAccount:
         self.expire_at = int(datetime.now(timezone.utc).timestamp()) + expires_in
 
     @classmethod
-    def from_data(cls: Type[AmazonAccount], data: dict, email: str, domain: str):
+    def from_data(cls: Type[AmazonAccount], data: dict, email: str, password: str, domain: str):
         success_response = data.get("response", {}).get("success", {})
         if not success_response:
             raise ValueError("Invalid response")
@@ -168,6 +169,7 @@ class AmazonAccount:
             cust_id,
             cust_name,
             email,
+            password,
             cust_region,
             cust_pool,
             domain,
@@ -185,6 +187,7 @@ class AmazonAccount:
             data["id"],
             data["name"],
             data["email"],
+            data["password"],
             data["region"],
             data["pool"],
             data["domain"],
@@ -201,6 +204,7 @@ class AmazonAccount:
             "id": self.id,
             "name": self.name,
             "email": self.email,
+            "password": self.password,
             "region": self.region,
             "pool": self.pool,
             "domain": self.domain,
