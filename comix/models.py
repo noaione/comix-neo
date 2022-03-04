@@ -76,7 +76,7 @@ class ComicData:
     def int_id(self):
         if isinstance(self.id, int):
             return self.id
-        return str(self.id)
+        return int(self.id)
 
 
 @dataclass
