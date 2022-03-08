@@ -2,7 +2,7 @@ import sys
 from os.path import expandvars
 from pathlib import Path
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 if sys.platform == "win32":
     USER_PATH = Path(expandvars("%LOCALAPPDATA%/ComixNeo"))
 else:
