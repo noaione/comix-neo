@@ -9,7 +9,7 @@ import click
 from .amz import AmazonAuth, AuthFailed
 from .client import CmxClient
 from .constants import USER_PATH, __version__
-from .exporter import CBZMangaExporter, MangaExporter
+from .exporter import exporter_factory
 from .key import ComixKey
 from .logme import setup_logger
 from .progressbar import ProgressBar
@@ -46,11 +46,8 @@ def _get_user_or_fallback(username: Optional[str], password: Optional[str]) -> s
     return active_account
 
 
-def cmx_download_helper(comic: ComicData, output_dir: Path, session: Session, as_cbz: bool = False) -> None:
-    if as_cbz:  # Export as .cbz
-        cmx_export = CBZMangaExporter(comic, output_dir)
-    else:
-        cmx_export = MangaExporter(comic, output_dir)
+def cmx_download_helper(comic: ComicData, output_dir: Path, session: Session, export_type: str) -> None:
+    cmx_export = exporter_factory(comic, output_dir, export_type)
 
     if cmx_export.is_existing():
         logger.info(f"{comic.release_name} already downloaded!")
@@ -108,9 +105,19 @@ def main(ctx: click.Context):
     default="com",
     help="The domain tld of your account, default is com.",
 )
-@click.option("--cbz", is_flag=True, help="Merge as CBZ after finish downloading")
+@click.option(
+    "--export",
+    "-e",
+    type=click.Choice(["raw", "cbz", "epub"], case_sensitive=False),
+    default="raw",
+    help="Export format, raw will be in folder format!",
+)
 def comix_neo_download(
-    comic_id: str, username: Optional[str], password: Optional[str], domain: str, cbz: bool
+    comic_id: str,
+    username: Optional[str],
+    password: Optional[str],
+    domain: str,
+    export: str,
 ):
     """
     Download comic by ID.
@@ -127,7 +134,7 @@ def comix_neo_download(
         exit(1)
 
     comix_out = CURRENT_DIR / "comix_dl" / comic.release_name
-    cmx_download_helper(comic, comix_out, neo_session.session, cbz)
+    cmx_download_helper(comic, comix_out, neo_session.session, export)
     neo_session.close()
 
 
@@ -198,8 +205,19 @@ def comix_neo_list(username: Optional[str], password: Optional[str], domain: str
     default="com",
     help="The domain tld of your account, default is com.",
 )
-@click.option("--cbz", is_flag=True, help="Merge as CBZ after finish downloading")
-def comix_neo_dlall(username: Optional[str], password: Optional[str], domain: str, cbz: bool):
+@click.option(
+    "--export",
+    "-e",
+    type=click.Choice(["raw", "cbz", "epub"], case_sensitive=False),
+    default="raw",
+    help="Export format, raw will be in folder format!",
+)
+def comix_neo_dlall(
+    username: Optional[str],
+    password: Optional[str],
+    domain: str,
+    export: str,
+):
     """
     Download all comics available on your account.
     """
@@ -224,7 +242,7 @@ def comix_neo_dlall(username: Optional[str], password: Optional[str], domain: st
             continue
 
         comix_out = CURRENT_DIR / "comix_dl" / comic.release_name
-        cmx_download_helper(comic, comix_out, neo_session.session, cbz)
+        cmx_download_helper(comic, comix_out, neo_session.session, export)
     logger.info("Finished downloading all comics")
     neo_session.close()
 

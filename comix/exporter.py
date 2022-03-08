@@ -1,25 +1,50 @@
 from __future__ import annotations
-import os
 
-from pathlib import Path
+import os
+from enum import Enum
 from io import BytesIO
-from typing import TYPE_CHECKING, List, Optional, Union
+from os.path import basename, splitext
+from pathlib import Path
+from typing import TYPE_CHECKING, List, Optional, Type, Union
+from zipfile import ZipFile
 
 from pyzipper import AESZipFile
-from zipfile import ZipFile
-from os.path import basename, splitext
 
 from .models import ComicData
 
 if TYPE_CHECKING:
     from zipfile import ZipInfo
 
-__all__ = ("MangaExporter", "CBZMangaExporter")
+__all__ = (
+    "MangaExporter",
+    "CBZMangaExporter",
+    "EPUBMangaExporter",
+    "ExporterType",
+    "exporter_factory",
+)
 VALID_IMAGES = [".jpg", ".jpeg", "jpg", "jpeg", ".png", "png"]
 TEMPLATES_DIR = Path(__file__).absolute().parent / "templates"
 
 
+class ExporterType(Enum):
+    raw = 0
+    cbz = 1
+    epub = 2
+
+    @classmethod
+    def from_choice(cls: Type[ExporterType], ext: str):
+        ext = ext.lower()
+        if ext == "cbz":
+            return cls.cbz
+        elif ext == "epub":
+            return cls.epub
+        else:
+            return cls.raw
+
+
 class MangaExporter:
+    TYPE = ExporterType.raw
+
     def __init__(self, comic: ComicData, output_directory: Path):
         self._comic = comic
         self._out_dir = output_directory
@@ -81,6 +106,8 @@ def self_destruct_folder(folder: Path):
 
 
 class CBZMangaExporter(MangaExporter):
+    TYPE = ExporterType.cbz
+
     def __init__(self, comic: ComicData, output_directory: Path):
         super().__init__(comic, output_directory)
 
@@ -113,6 +140,8 @@ class CBZMangaExporter(MangaExporter):
 
 
 class EPUBMangaExporter(MangaExporter):
+    TYPE = ExporterType.epub
+
     def __init__(self, comic: ComicData, output_directory: Path):
         super().__init__(comic, output_directory)
 
@@ -177,3 +206,17 @@ class EPUBMangaExporter(MangaExporter):
             self._page_counter += 1
 
         return images_list
+
+
+def exporter_factory(
+    comic: ComicData, output_directory: Path, mode: Union[str, ExporterType] = ExporterType.raw
+):
+    if isinstance(mode, str):
+        mode = ExporterType.from_choice(mode)
+    if mode == ExporterType.raw:
+        return MangaExporter(comic, output_directory)
+    elif mode == ExporterType.cbz:
+        return CBZMangaExporter(comic, output_directory)
+    elif mode == ExporterType.epub:
+        return EPUBMangaExporter(comic, output_directory)
+    raise ValueError(f"Unknown mode: {mode}")
