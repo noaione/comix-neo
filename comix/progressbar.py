@@ -22,6 +22,6 @@ class ProgressBar:
                 yield page
         else:
             for page in list(range(0, self._maximum)):
-                print(f"\rDownloading: {page + 1}/{self._maximum}")
+                print(f"Downloading: {page + 1}/{self._maximum}\r", end="")
                 yield page
         print()
