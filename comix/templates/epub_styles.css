@@ -1,0 +1,27 @@
+@page {
+    margin-bottom: 0;
+    margin-left: 0;
+    margin-right: 0;
+    margin-top: 0;
+    padding-bottom: 0;
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 0
+}
+
+.img-body {
+    display: block;
+    text-align: left;
+    margin: 0;
+    padding: 0
+}
+
+.img-wrapper {
+    display: block;
+    text-align: center
+}
+
+.img-class {
+    height: auto;
+    width: auto
+}

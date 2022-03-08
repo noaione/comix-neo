@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 
 __all__ = ("MangaExporter", "CBZMangaExporter")
 VALID_IMAGES = [".jpg", ".jpeg", "jpg", "jpeg", ".png", "png"]
+TEMPLATES_DIR = Path(__file__).absolute().parent / "templates"
 
 
 class MangaExporter:
@@ -86,10 +87,11 @@ class CBZMangaExporter(MangaExporter):
         self._target_cbz: Optional[ZipFile] = None
 
     def is_existing(self):
-        parent_test = super().is_existing()
         parent_dir = self._out_dir.parent
         target_cbz = parent_dir / f"{self._comic.release_name}.cbz"
-        return target_cbz.exists() or parent_test
+        if target_cbz.exists():
+            return True
+        return super().is_existing()
 
     def add_image(self, zip_bita: Union[bytes, BytesIO], image_key: bytes) -> List[str]:
         if self._target_cbz is None:
@@ -108,3 +110,70 @@ class CBZMangaExporter(MangaExporter):
         if self._target_cbz is not None:
             self._target_cbz.close()
         self_destruct_folder(self._out_dir)
+
+
+class EPUBMangaExporter(MangaExporter):
+    def __init__(self, comic: ComicData, output_directory: Path):
+        super().__init__(comic, output_directory)
+
+        self._target_epub: Optional[ZipFile] = None
+        self._meta_injected: bool = False
+
+        self._page_counter = 1
+
+    def is_existing(self):
+        parent_dir = self._out_dir.parent
+        target_cbz = parent_dir / f"{self._comic.release_name}.epub"
+        if target_cbz.exists():
+            return True
+        return super().is_existing()
+
+    def _initialize_meta(self):
+        if self._meta_injected:
+            return
+        if self._target_epub is None:
+            parent_dir = self._out_dir.parent
+            self._target_epub = ZipFile(parent_dir / f"{self._comic.release_name}.cbz", "w")
+        styles = TEMPLATES_DIR / "epub_styles.css"
+        styles_bytes = styles.read_bytes()
+        self._target_epub.writestr("epub_styles.css", styles_bytes)
+        container = TEMPLATES_DIR / "epub_container.xml"
+        container_bytes = container.read_bytes()
+        self._target_epub.writestr(Path("META-INF/container.xml"), container_bytes)
+        self._meta_injected = True
+
+    def _inject_meta(self, number: int, filename: str):
+        page_title = f"{self._comic.release_name} - Page #{number}"
+        if number == 1:
+            page_title = f"{self._comic.release_name} - Cover Page"
+
+        page_xhtml = TEMPLATES_DIR / "epub_page.xhtml"
+        page_xhtml_text = page_xhtml.read_text()
+        page_xhtml_text = (
+            page_xhtml_text.replace(
+                r"{{title}}",
+                page_title,
+            )
+            .replace(r"{{number}}", str(number))
+            .replace(
+                r"{{filename}}",
+                filename,
+            )
+        )
+        self._target_epub.writestr(f"page_{number:03d}.xhtml", page_xhtml_text.encode("utf-8"))
+
+    def add_image(self, zip_bita: Union[bytes, BytesIO], image_key: bytes) -> List[str]:
+        if self._target_epub is None:
+            parent_dir = self._out_dir.parent
+            self._target_epub = ZipFile(parent_dir / f"{self._comic.release_name}.cbz", "w")
+        images_list = super().add_image(zip_bita, image_key)
+
+        for image in images_list:
+            img_path = self._out_dir / image
+            inject_bytes = img_path.read_bytes()
+            self._target_epub.writestr(image, inject_bytes)
+            self._inject_meta(self._page_counter, image)
+            os.remove(str(img_path))
+            self._page_counter += 1
+
+        return images_list
