@@ -1,7 +1,7 @@
 from base64 import b64encode
 from binascii import hexlify
-from typing import Union
 from hashlib import md5
+from typing import Union
 
 
 class ComixKey:

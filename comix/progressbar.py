@@ -2,7 +2,6 @@
 
 from typing import Generator
 
-
 try:
     import tqdm  # type: ignore noqa
 
