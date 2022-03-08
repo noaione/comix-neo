@@ -5,6 +5,14 @@ Another version of "comix", a tools to backup your Comixology comics and manga!
 **Disclaimer**<br />
 I'm not advocating the use to pirate stuff, this tools only helps you to backup your comics into your disk only in the highest quality possible!
 
+The reason I create this version is because I want to consolidate the script better for expansion.
+
+## Improvements
+- Logging system (and better console output)
+- Using click for the CLI for better expansion
+- Multi-export type support (ongoing)
+- Cleaner code in general
+
 ## Requirements
 - Python 3.7+
 - [Poetry](https://python-poetry.org/docs/)
