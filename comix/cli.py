@@ -46,25 +46,6 @@ def _get_user_or_fallback(username: Optional[str], password: Optional[str]) -> s
     return active_account
 
 
-def empty_folders(folders: Path):
-    if not folders.exists() or not folders.is_dir():
-        return
-    for folder in folders.iterdir():
-        if folders.is_dir():
-            empty_folders(folder)
-        else:
-            folder.unlink(missing_ok=True)
-    folders.rmdir()
-
-
-def existing_dl(path: Path):
-    if path.exists():
-        return True
-    fname = path.name
-    cbz_file = path.parent / f"{fname}.cbz"
-    return cbz_file.exists()
-
-
 def cmx_download_helper(comic: ComicData, output_dir: Path, session: Session, as_cbz: bool = False) -> None:
     if as_cbz:  # Export as .cbz
         cmx_export = CBZMangaExporter(comic, output_dir)
